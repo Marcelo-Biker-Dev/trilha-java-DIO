@@ -1,5 +1,5 @@
 package com.treinamento.oo.bancodigitaljava.entities;
 
-public class Banco {
+public abstract class Conta {
     
 }
