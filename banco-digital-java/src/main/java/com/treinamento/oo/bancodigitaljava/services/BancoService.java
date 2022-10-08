@@ -1,7 +1,15 @@
 package com.treinamento.oo.bancodigitaljava.services;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import java.util.Scanner;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import com.treinamento.oo.bancodigitaljava.entities.Cliente;
@@ -10,77 +18,159 @@ import com.treinamento.oo.bancodigitaljava.entities.ContaCorrente;
 import com.treinamento.oo.bancodigitaljava.entities.ContaPoupanca;
 import com.treinamento.oo.bancodigitaljava.enums.Agencia;
 import com.treinamento.oo.bancodigitaljava.enums.TipoDeConta;
+import com.treinamento.oo.bancodigitaljava.repositories.ClienteContasRepository;
+import com.treinamento.oo.bancodigitaljava.repositories.ClienteRepository;
+import com.treinamento.oo.bancodigitaljava.repositories.ContaRepository;
 
 @Service
 public class BancoService {
 
-    private Conta conta;
+    private Conta novaConta;
     private Cliente cliente;
-    private static int NUMERO_DE_CONTA_CORRENTE = 100000;
-    private static int NUMERO_DE_CONTA_POUPANCA = 500000;
 
+    @Autowired
+    private ClienteRepository repoCliente;
+    
+    @Autowired
+    private ContaRepository repoConta;
 
+    @Autowired
+    private ClienteContasRepository repoClienteContas;
+
+    Agencia agencia;
+    
     Scanner sc = new Scanner(System.in);
 
-    public void abreConta() {
-        System.out.println("Olá! Digite seu nome: ");
-        String nome = sc.next();
-
-        System.out.println(nome +", quer abrir conta corrente ou poupança?\n Responda CC para conta corrente, ou responda POUPANCA para conta poupança: ");
-        String tipoConta = sc.next().toUpperCase();
-
-        System.out.println("Por favor, digite seu CPF: ");
-        String cpf = sc.next();
-
-        System.out.println("Para concluir, escolha uma agência: (Lisboa, Porto, Braga ou Faro)");
-        String agenciaEscolhida = sc.next().toUpperCase();
+    public ResponseEntity<String> abreConta(String nome, String cpf, String celular, String tipoConta, String agenciaEscolhida) {
         
-        setCliente(nome, cpf);
+        cliente = new Cliente(cpf, nome, celular);
+        repoCliente.save(cliente);
+        System.out.println("(!!! ATENÇÃO !!!) Cliente nome é " + cliente.getNome() + " cpf é " + cliente.getCpf() + "e a resposta a seguir deve ser o nome, e vem do ClienteRepository: " +repoCliente.findById(cliente.getCpf()));
 
-        Agencia agencia = null;
-        
         for (Agencia ag : Agencia.values()) {
-            if (ag.toString().equals(agenciaEscolhida)) {
+            if (ag.toString().equalsIgnoreCase(agenciaEscolhida)) {
                 agencia = ag;
             } 
         }
-
-        if (TipoDeConta.CC.toString().equals(tipoConta)) {
-            gerarNumeroDeConta(TipoDeConta.CC.getCodigo());
-            setCC(null, agencia, NUMERO_DE_CONTA_CORRENTE, cliente);
-            conta.imprimirExtrato();
+        
+        if (TipoDeConta.CC.toString().equalsIgnoreCase(tipoConta)) {
+            System.out.println(" (1ª linha) A agencia escolhida é a " + agencia + " e o tipo de conta escolhido é " + tipoConta);
+            novaConta = new ContaCorrente(cliente, agencia);
+            System.out.println("(ANTES DO repoConta SAVE) -->  número da conta: " + novaConta.getNumeroDeConta());
+            repoConta.save(novaConta);
+            System.out.println("(DEPOIS DO repoConta SAVE) -->  número da conta: " + novaConta.getNumeroDeConta());
         }
-        else if (TipoDeConta.POUPANCA.toString().equals(tipoConta)) {
-            gerarNumeroDeConta(TipoDeConta.POUPANCA.getCodigo());
-            setCP(null, agencia, NUMERO_DE_CONTA_POUPANCA, cliente);
-            conta.imprimirExtrato();
+        else if (TipoDeConta.POUPANCA.toString().equalsIgnoreCase(tipoConta)) {
+            System.out.println(" (1ª linha) A agencia escolhida é a " + agencia + " e o tipo de conta escolhido é " + tipoConta);
+            novaConta = new ContaPoupanca(cliente, agencia);
+            System.out.println("(ANTES DO repoConta SAVE) -->  número da conta: "+novaConta.getNumeroDeConta());
+            repoConta.save(novaConta);
+            System.out.println("(DEPOIS DO repoConta SAVE) -->  número da conta: "+novaConta.getNumeroDeConta());
         }
+        
+        for (Conta c : cliente.getContas()) {
+            System.out.println("imprimindo as contas do cliente " + c.getNumeroDeConta() );
+        }
+        cliente.adicionaConta(novaConta);
+        return new ResponseEntity<String>("Conta criada com sucesso", HttpStatus.CREATED);
     }
 
-    private Cliente setCliente(String nome, String cpf) {
-        return cliente = new Cliente(cpf, nome);
+    
+    public ResponseEntity<Page<Conta>> listarContas(Pageable pageable) {
+        Page<Conta> result = repoConta.findAll(pageable);
+        return ResponseEntity.ok(result);
     }
 
-    private int gerarNumeroDeConta(int tipoConta) {
-        if (tipoConta == 10) {
-            NUMERO_DE_CONTA_CORRENTE++;
-            return NUMERO_DE_CONTA_CORRENTE;
+    
+    public ResponseEntity<Page<Cliente>> listarClientes(Pageable pageable) {
+        Page<Cliente> result = repoCliente.findAll(pageable);
+        return ResponseEntity.ok(result);
+    }
+
+    
+    /*public ResponseEntity<List<Conta>> listarContasPorCpf(String cpf, Pageable pageable) {
+        List<Conta> list = new ArrayList<Conta>();
+        Page<Conta> result = repoConta.findAll(pageable);
+        int count = 0;
+        for (Conta c : result) {
+            if (c.getClienteCpf().equals(cpf)) {
+                list.add(c);
+                count++;
+            }    
         }
-        else {
-            NUMERO_DE_CONTA_POUPANCA++;
-            return NUMERO_DE_CONTA_POUPANCA;
+        if (count > 0) {
+            return ResponseEntity.ok(list);
         }
+        else return ResponseEntity.badRequest().build();
+    }*/
+    
+    public ResponseEntity<List<Conta>> listarContasPorCpf(String cpf, Pageable pageable) {
+        Optional<Cliente> esteCliente = repoCliente.findById(cpf);
+        List<Conta> list = esteCliente.get().getContas();
+        System.out.println("NOME DESTE CLIENTE: " + esteCliente.get().getNome() + ". Tem " + list.size() + " contas");
+        if (list.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        else return ResponseEntity.ok(list);
     }
 
-    private Conta setCC(Long id, Agencia agencia, int numero, Cliente cliente) {
-        return conta = new ContaCorrente(id, agencia, numero, cliente);
+
+    public ResponseEntity<Page<Cliente>> mostrarClientesPorNome(String nome, Pageable pageable) {
+        return repoCliente.findByNomeContainingIgnoreCase(nome, pageable)
+        .map(record -> ResponseEntity.ok().body(record))
+        .orElse(ResponseEntity.notFound().build());
     }
 
-    private Conta setCP(Long id, Agencia agencia, int numero, Cliente cliente) {
-        return conta = new ContaPoupanca(id, agencia, numero, cliente);
+
+    public ResponseEntity<Cliente> mostrarClientePorCpf(String cpf) {
+        return repoCliente.findById(cpf)
+        .map(record -> ResponseEntity.ok().body(record))
+        .orElse(ResponseEntity.notFound().build());
     }
     
-    private void imprimeExtrato() {
-        conta.imprimirExtrato();
+
+    public String imprimirExtrato(int numeroConta) {
+        String extrato = "";
+        List<Conta> contas = repoConta.findAll();
+        for (Conta conta : contas) {
+            if (conta.getNumeroDeConta() == numeroConta) {
+                extrato = conta.imprimirExtrato();
+            }
+        }
+        return extrato;
+    }
+
+
+    public String depositar(int numeroConta, Long valorDeposito) {
+        List<Conta> contas = repoConta.findAll();
+        for (Conta conta : contas) {
+            if (conta.getNumeroDeConta() == numeroConta) {
+                conta.depositar(valorDeposito);
+                repoConta.save(conta);
+                return "Depósito efetuado com sucesso";
+            }
+        }
+        return "Conta não encontrada. Por favor verifique o número informado";
+    }
+
+
+    public String transferir(int numeroContaDebitar, int numeroContaDepositar, Long valorTransferir) {
+        List<Conta> contas = repoConta.findAll();
+        for (Conta contaDeb : contas) {
+            if (contaDeb.getNumeroDeConta() == numeroContaDebitar) {
+                for (Conta contaDep : contas) {
+                    System.out.println(numeroContaDebitar+ " " + contaDeb.getNumeroDeConta()+ " " + numeroContaDepositar+ " " + contaDep.getNumeroDeConta());
+                    if (contaDep.getNumeroDeConta() == numeroContaDepositar) {
+                        contaDeb.sacar(valorTransferir);
+                        repoConta.save(contaDeb);
+                        contaDep.depositar(valorTransferir);
+                        repoConta.save(contaDep);
+                        return "Transferência efetuada com sucesso";
+                    }
+                }
+                return "Conta de destino não encontrada. Por favor verifique o número informado";
+            }
+        }
+        return "Conta de origem não encontrada. Por favor verifique o número informado";
     }
 }

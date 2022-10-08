@@ -1,8 +1,5 @@
 package com.treinamento.oo.bancodigitaljava.enums;
 
-import lombok.Getter;
-
-@Getter
 public enum Agencia {
     
     LISBOA (01),
@@ -15,4 +12,9 @@ public enum Agencia {
     private Agencia(int numero) {
         this.numero = numero;
     }
+
+    public int getNumero() {
+        return numero;
+    }
+    
 }

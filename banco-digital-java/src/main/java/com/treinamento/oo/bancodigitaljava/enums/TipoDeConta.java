@@ -1,8 +1,5 @@
 package com.treinamento.oo.bancodigitaljava.enums;
 
-import lombok.Getter;
-
-@Getter
 public enum TipoDeConta {
     
     CC ("Conta corrente", 10),
@@ -15,4 +12,13 @@ public enum TipoDeConta {
         this.descricao = descricao;
         this.codigo = codigo;
     }
+
+    public String getDescricao() {
+        return descricao;
+    }
+
+    public int getCodigo() {
+        return codigo;
+    }
+    
 }

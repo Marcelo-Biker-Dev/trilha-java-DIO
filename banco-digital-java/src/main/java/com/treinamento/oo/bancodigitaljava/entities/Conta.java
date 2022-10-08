@@ -1,48 +1,86 @@
 package com.treinamento.oo.bancodigitaljava.entities;
 
+import com.treinamento.oo.bancodigitaljava.enums.Agencia;
+
+import java.util.Date;
+
 import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
-import com.treinamento.oo.bancodigitaljava.enums.Agencia;
-
-import lombok.Getter;
-import lombok.ToString;
-
-@Getter
 @Entity
-@ToString
-@Table(name="tb_contas")
+@Table
 public abstract class Conta {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    protected Integer numeroDeConta;
     protected Agencia agencia;
-	protected int numeroDeConta;
-	protected double saldo = 0;
+	protected double saldo;
+    protected Date dtCadastro;
     
     @ManyToOne
-    @JoinColumn(name = "cliente_cpf")
+    @JoinColumn(name="cliente_cpf", nullable=false)
 	protected Cliente cliente;
 
-	protected Conta(Long id, Agencia agencia, int numero, Cliente cliente) {
-        this.id = id;
-		this.agencia = agencia;
-        this.numeroDeConta = numero;
-		this.cliente = cliente;
-	}
-
-	protected void imprimirInfosComuns() {
-        System.out.println(String.format("Titular: %s", this.cliente.getNome()));
-        System.out.println(String.format("Agencia: %s", this.agencia));
-        System.out.println(String.format("Numero: %d", this.numeroDeConta));
-        System.out.println(String.format("Saldo: %.2f", this.saldo));
+	public Conta() {
     }
 
-    public void imprimirExtrato() {};
+    public Conta(Cliente cliente, Agencia agencia) {
+		this.agencia = agencia;
+		this.cliente = cliente;
+		this.dtCadastro = new Date();
+        cliente.adicionaConta(this);
+	}
+    
+    public Integer getNumeroDeConta() {
+        return numeroDeConta;
+    }
+    
+    public Agencia getAgencia() {
+        return agencia;
+    }
+    
+    public Date getDtCadastro() {
+        return dtCadastro;
+    }
+    
+    public double getSaldo() {
+        return saldo;
+    }
+    
+    public void setSaldo(double saldo) {
+        this.saldo = saldo;
+    }
+    
+    public void depositar(Long valorDeposito) {
+        setSaldo(this.saldo + valorDeposito);
+    }
+    
+    public void sacar(Long valorSaque) {
+        this.saldo -= valorSaque;
+    }
+    
+    abstract public String imprimirExtrato();
+
+    protected String imprimirInfosComuns() {
+        String infoComum =
+        String.format("Titular: %s%n", this.cliente.getNome())+
+        String.format("Agencia: %s%n", this.agencia)+
+        String.format("Saldo: %.2f%n", this.saldo);
+        return infoComum;
+    }
+    
+    public Cliente getCliente() {
+        return cliente;
+    }
+
+    public void setCliente(Cliente cliente) {
+        this.cliente = cliente;
+    }
+    
+    public String getCliente_Cpf(Cliente cliente) {
+        return cliente.getCpf();
+    }
 }
